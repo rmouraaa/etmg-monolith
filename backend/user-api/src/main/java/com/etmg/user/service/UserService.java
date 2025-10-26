@@ -2,6 +2,7 @@ package com.etmg.user.service;
 
 import com.etmg.user.dto.LoginRequest;
 import com.etmg.user.dto.LoginResponse;
+import com.etmg.user.dto.ProfileResponse;
 import com.etmg.user.dto.RegisterRequest;
 import com.etmg.user.dto.RegisterResponse;
 import com.etmg.user.model.User;
@@ -110,5 +111,20 @@ public class UserService {
                 user.getId(),
                 user.getName(),
                 user.getEmail());
+    }
+
+    public ProfileResponse getProfile(Long userId) {
+
+        // Busca usuário por ID
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
+
+        // Retorna perfil
+        return new ProfileResponse(
+                user.getId(),
+                user.getName(),
+                user.getEmail(),
+                user.getEmailVerified(),
+                user.getCreatedAt());
     }
 }
