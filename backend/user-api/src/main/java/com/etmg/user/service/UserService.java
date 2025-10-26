@@ -1,24 +1,35 @@
 package com.etmg.user.service;
 
+import com.etmg.user.dto.HistoryResponse;
 import com.etmg.user.dto.LoginRequest;
 import com.etmg.user.dto.LoginResponse;
 import com.etmg.user.dto.ProfileResponse;
 import com.etmg.user.dto.RegisterRequest;
 import com.etmg.user.dto.RegisterResponse;
+import com.etmg.user.model.Question;
 import com.etmg.user.model.User;
+import com.etmg.user.repository.QuestionRepository;
 import com.etmg.user.repository.UserRepository;
 import com.etmg.user.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Service
 public class UserService {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private QuestionRepository questionRepository;
 
     @Autowired
     private JwtUtil jwtUtil;
@@ -126,5 +137,35 @@ public class UserService {
                 user.getEmail(),
                 user.getEmailVerified(),
                 user.getCreatedAt());
+    }
+
+    public HistoryResponse getHistory(Long userId, int page) {
+
+        // Validar página (mínimo 1)
+        if (page < 1) {
+            page = 1;
+        }
+
+        // Configurar paginação (9 perguntas por página, página começa em 0)
+        Pageable pageable = PageRequest.of(page - 1, 9);
+
+        // Buscar perguntas do usuário
+        Page<Question> questionsPage = questionRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable);
+
+        // Converter para DTO
+        List<HistoryResponse.QuestionItem> questionItems = questionsPage.getContent()
+                .stream()
+                .map(q -> new HistoryResponse.QuestionItem(
+                        q.getId(),
+                        q.getQuestion(),
+                        q.getCreatedAt()))
+                .collect(Collectors.toList());
+
+        // Retornar resposta com paginação
+        return new HistoryResponse(
+                questionItems,
+                questionsPage.getNumber() + 1, // volta pra base 1
+                questionsPage.getTotalPages(),
+                questionsPage.getTotalElements());
     }
 }
