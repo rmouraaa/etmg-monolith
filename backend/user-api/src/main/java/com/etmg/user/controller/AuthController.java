@@ -1,5 +1,7 @@
 package com.etmg.user.controller;
 
+import com.etmg.user.dto.LoginRequest;
+import com.etmg.user.dto.LoginResponse;
 import com.etmg.user.dto.RegisterRequest;
 import com.etmg.user.dto.RegisterResponse;
 import com.etmg.user.service.UserService;
@@ -29,6 +31,23 @@ public class AuthController {
             return ResponseEntity
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ErrorResponse("Erro ao criar usuário"));
+        }
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<?> login(@RequestBody LoginRequest request) {
+        try {
+            LoginResponse response = userService.loginUser(request);
+            return ResponseEntity.ok(response);
+
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity
+                    .status(HttpStatus.UNAUTHORIZED)
+                    .body(new ErrorResponse(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ErrorResponse("Erro ao autenticar"));
         }
     }
 

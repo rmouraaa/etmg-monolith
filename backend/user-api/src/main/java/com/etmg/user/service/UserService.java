@@ -1,9 +1,12 @@
 package com.etmg.user.service;
 
+import com.etmg.user.dto.LoginRequest;
+import com.etmg.user.dto.LoginResponse;
 import com.etmg.user.dto.RegisterRequest;
 import com.etmg.user.dto.RegisterResponse;
 import com.etmg.user.model.User;
 import com.etmg.user.repository.UserRepository;
+import com.etmg.user.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -15,6 +18,9 @@ public class UserService {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private JwtUtil jwtUtil;
 
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
@@ -73,5 +79,36 @@ public class UserService {
         return new RegisterResponse(
                 savedUser.getId(),
                 "Usuário criado! Verifique seu email para confirmar.");
+    }
+
+    public LoginResponse loginUser(LoginRequest request) {
+
+        // 1. Validar se campos não estão vazios
+        if (request.getEmail() == null || request.getEmail().trim().isEmpty()) {
+            throw new IllegalArgumentException("Email é obrigatório");
+        }
+
+        if (request.getPassword() == null || request.getPassword().trim().isEmpty()) {
+            throw new IllegalArgumentException("Senha é obrigatória");
+        }
+
+        // 2. Buscar usuário por email
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new IllegalArgumentException("Credenciais inválidas"));
+
+        // 3. Verificar se a senha está correta
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            throw new IllegalArgumentException("Credenciais inválidas");
+        }
+
+        // 4. Gerar token JWT
+        String token = jwtUtil.generateToken(user.getId(), user.getEmail());
+
+        // 5. Retornar resposta
+        return new LoginResponse(
+                token,
+                user.getId(),
+                user.getName(),
+                user.getEmail());
     }
 }

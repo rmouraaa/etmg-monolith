@@ -13,7 +13,7 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable()) // Desativa CSRF para testes de API
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/register").permitAll() // libera cadastro
+                        .requestMatchers("/auth/register", "/auth/login").permitAll() // libera cadastro e login
                         .anyRequest().authenticated() // resto exige auth
                 )
                 .formLogin(login -> login.disable())
