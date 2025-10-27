@@ -27,6 +27,8 @@ services:
       DATABASE_USER: admin
       DATABASE_PASSWORD: admin123
       JWT_SECRET: explain-to-me-genius-secret-2025
+      GMAIL_USERNAME: ${GMAIL_USERNAME}
+      GMAIL_APP_PASSWORD: ${GMAIL_APP_PASSWORD}
     depends_on:
       - postgres
     networks:

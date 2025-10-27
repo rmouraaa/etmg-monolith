@@ -7,6 +7,8 @@ import com.etmg.user.dto.LoginResponse;
 import com.etmg.user.dto.ProfileResponse;
 import com.etmg.user.dto.RegisterRequest;
 import com.etmg.user.dto.RegisterResponse;
+import com.etmg.user.dto.VerifyEmailRequest;
+import com.etmg.user.dto.VerifyEmailResponse;
 import com.etmg.user.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -128,6 +130,34 @@ public class AuthController {
             return ResponseEntity
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ErrorResponse("Erro ao deletar conta"));
+        }
+    }
+
+    @PostMapping("/verify-email")
+    public ResponseEntity<?> verifyEmail(
+            HttpServletRequest request,
+            @RequestBody VerifyEmailRequest verifyRequest) {
+        try {
+            // Pega o userId do token
+            Long userId = (Long) request.getAttribute("userId");
+
+            if (userId == null) {
+                return ResponseEntity
+                        .status(HttpStatus.UNAUTHORIZED)
+                        .body(new ErrorResponse("Token inválido"));
+            }
+
+            VerifyEmailResponse response = userService.verifyEmail(userId, verifyRequest);
+            return ResponseEntity.ok(response);
+
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(new ErrorResponse(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ErrorResponse("Erro ao verificar email"));
         }
     }
 

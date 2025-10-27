@@ -7,8 +7,12 @@ import com.etmg.user.dto.LoginResponse;
 import com.etmg.user.dto.ProfileResponse;
 import com.etmg.user.dto.RegisterRequest;
 import com.etmg.user.dto.RegisterResponse;
+import com.etmg.user.dto.VerifyEmailRequest;
+import com.etmg.user.dto.VerifyEmailResponse;
+import com.etmg.user.model.EmailVerification;
 import com.etmg.user.model.Question;
 import com.etmg.user.model.User;
+import com.etmg.user.repository.EmailVerificationRepository;
 import com.etmg.user.repository.QuestionRepository;
 import com.etmg.user.repository.UserRepository;
 import com.etmg.user.util.JwtUtil;
@@ -21,6 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Random;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -32,6 +37,12 @@ public class UserService {
 
     @Autowired
     private QuestionRepository questionRepository;
+
+    @Autowired
+    private EmailVerificationRepository emailVerificationRepository;
+
+    @Autowired
+    private EmailService emailService;
 
     @Autowired
     private JwtUtil jwtUtil;
@@ -87,9 +98,10 @@ public class UserService {
         // 7. Salvar no banco
         User savedUser = userRepository.save(user);
 
-        // TODO: Enviar email de confirmação aqui (próxima etapa)
+        // 8. Gerar código de verificação e enviar email
+        sendVerificationEmail(savedUser);
 
-        // 8. Retornar resposta
+        // 9. Retornar resposta
         return new RegisterResponse(
                 savedUser.getId(),
                 "Usuário criado! Verifique seu email para confirmar.");
@@ -186,5 +198,64 @@ public class UserService {
 
         // 4. Retornar confirmação
         return new DeleteAccountResponse("Conta deletada com sucesso");
+    }
+
+    // Gera código de 6 dígitos
+    private String generateVerificationCode() {
+        Random random = new Random();
+        int code = 100000 + random.nextInt(900000); // Gera entre 100000 e 999999
+        return String.valueOf(code);
+    }
+
+    // Envia email de verificação
+    private void sendVerificationEmail(User user) {
+        try {
+            // Gera código
+            String code = generateVerificationCode();
+
+            // Salva no banco
+            EmailVerification verification = new EmailVerification(user.getId(), code);
+            emailVerificationRepository.save(verification);
+
+            // Envia email
+            emailService.sendVerificationCode(user.getEmail(), code, user.getName());
+
+        } catch (Exception e) {
+            // Se falhar ao enviar email, não bloqueia o cadastro
+            System.err.println("Erro ao enviar email de verificação: " + e.getMessage());
+        }
+    }
+
+    // Verifica o código
+    @Transactional
+    public VerifyEmailResponse verifyEmail(Long userId, VerifyEmailRequest request) {
+
+        // 1. Validar se código foi enviado
+        if (request.getCode() == null || request.getCode().trim().isEmpty()) {
+            throw new IllegalArgumentException("Código é obrigatório");
+        }
+
+        // 2. Buscar verificação
+        EmailVerification verification = emailVerificationRepository
+                .findByUserIdAndCodeAndVerifiedFalse(userId, request.getCode())
+                .orElseThrow(() -> new IllegalArgumentException("Código inválido ou já utilizado"));
+
+        // 3. Verificar se expirou
+        if (verification.isExpired()) {
+            throw new IllegalArgumentException("Código expirado. Solicite um novo código.");
+        }
+
+        // 4. Marcar código como verificado
+        verification.setVerified(true);
+        emailVerificationRepository.save(verification);
+
+        // 5. Marcar email do usuário como verificado
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
+        user.setEmailVerified(true);
+        userRepository.save(user);
+
+        // 6. Retornar sucesso
+        return new VerifyEmailResponse("Email verificado com sucesso!");
     }
 }
