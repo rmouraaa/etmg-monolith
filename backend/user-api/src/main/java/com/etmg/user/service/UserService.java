@@ -1,5 +1,6 @@
 package com.etmg.user.service;
 
+import com.etmg.user.dto.DeleteAccountResponse;
 import com.etmg.user.dto.HistoryResponse;
 import com.etmg.user.dto.LoginRequest;
 import com.etmg.user.dto.LoginResponse;
@@ -17,6 +18,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.regex.Pattern;
@@ -167,5 +169,22 @@ public class UserService {
                 questionsPage.getNumber() + 1, // volta pra base 1
                 questionsPage.getTotalPages(),
                 questionsPage.getTotalElements());
+    }
+
+    @Transactional
+    public DeleteAccountResponse deleteAccount(Long userId) {
+
+        // 1. Verificar se usuário existe
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
+
+        // 2. Deletar todas as perguntas do usuário
+        questionRepository.deleteByUserId(userId);
+
+        // 3. Deletar o usuário
+        userRepository.delete(user);
+
+        // 4. Retornar confirmação
+        return new DeleteAccountResponse("Conta deletada com sucesso");
     }
 }
